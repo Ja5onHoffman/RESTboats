@@ -1,0 +1,191 @@
+
+
+service: AWSrestboat3
+
+# You can pin your service to only deploy with a specific Serverless version
+# Check out our docs for more details
+# frameworkVersion: "=X.X.X"
+
+plugins:
+  - serverless-python-requirements
+  - serverless-domain-manager
+
+custom:
+  customDomain:
+    domainName: coffeetilnoon.com
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
+
+provider:
+  name: aws
+  runtime: python2.7
+  region: us-east-1
+  environment:
+    DYNAMODB_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:DescribeTable
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
+functions:
+  clear_db:
+    handler: clear_db.clear_db
+    events:
+      - http:
+          path: clear
+          method: delete
+          cors: true
+  create_boat:
+    handler: boat/create_boat.create
+    events:
+      - http:
+          path: boat
+          method: post
+          cors: true
+  create_slip:
+    handler: slip/create_slip.create
+    events:
+      - http:
+          path: slip
+          method: post
+          cors: true
+  get_boat:
+    handler: boat/get_boat.get_boat
+    events:
+      - http:
+          path: boat/{id}
+          method: get
+          cors: true
+  get_slip:
+    handler: slip/get_slip.get_slip
+    events:
+      - http:
+          path: slip/{id}
+          method: get
+          cors: true
+  get_boats:
+    handler: boat/get_boats.get_boats
+    events:
+      - http:
+          path: boat
+          method: get
+          cors: true
+  get_slips:
+    handler: slip/get_slips.get_slips
+    events:
+      - http:
+          path: slip
+          method: get
+          cors: true
+  boat_arrival:
+    handler: boat/boat_arrival.boat_arrival
+    events:
+      - http:
+          path: boat/{id}/slip
+          method: put
+          cors: true
+  boat_departure:
+    handler: boat/boat_departure.boat_departure
+    events:
+      - http:
+          path: boat/{id}/slip
+          method: delete
+          cors: true
+  mod_boat:
+    handler: boat/mod_boat.mod_boat
+    events:
+      - http:
+          path: boat/{id}
+          method: patch
+          cors: true
+  mod_slip:
+    handler: slip/mod_slip.mod_slip
+    events:
+      - http:
+          path: slip/{id}
+          method: patch
+          cors: true
+  replace_boat:
+    handler: boat/replace_boat.replace_boat
+    events:
+      - http:
+          path: boat/{id}
+          method: put
+          cors: true
+  delete_boat:
+    handler: boat/delete_boat.delete_boat
+    events:
+      - http:
+          path: boat/{id}
+          method: delete
+          cors: true
+  delete_slip:
+    handler: slip/delete_slip.delete_slip
+    events:
+      - http:
+          path: slip/{id}
+          method: delete
+          cors: true
+  replace_slip:
+    handler: slip/replace_slip.replace_slip
+    events:
+      - http:
+          path: slip/{id}
+          method: put
+          cors: true
+ 
+
+resources:
+  Resources:
+    CS496DynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: id
+            AttributeType: S
+          -
+            AttributeName: entity_type
+            AttributeType: S
+          # -
+          #   AttributeName: is_boat
+          #   AttributeType: S
+          # - 
+          #   AttributeName: is_slip
+          #   AttributeType: S
+        KeySchema:
+          -
+            AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}
+        GlobalSecondaryIndexes:
+          - IndexName: entity_type
+            KeySchema:
+              - AttributeName: entity_type
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+            ProvisionedThroughput:
+              ReadCapacityUnits: 1
+              WriteCapacityUnits: 1
+          # - IndexName: isSlipIndex
+          #   KeySchema:
+          #     - AttributeName: is_slip
+          #       KeyType: HASH
+          #   Projection:
+          #     ProjectionType: ALL
+          #   ProvisionedThroughput:
+          #     ReadCapacityUnits: 1
+          #     WriteCapacityUnits: 1
